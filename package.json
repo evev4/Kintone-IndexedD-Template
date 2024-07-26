@@ -1,0 +1,26 @@
+{
+  "name": "kintone-customization-template",
+  "version": "1.0.0",
+  "main": "main.js",
+  "scripts": {
+    "build:prod": "webpack --mode=production",
+    "build:dev": "webpack --mode=development --devtool=eval-source-map --watch"
+  },
+  "keywords": [
+    "kintone"
+  ],
+  "author": "y.idakko@gmail.com",
+  "description": "This is my kintone customization template.",
+  "devDependencies": {
+    "@cybozu/eslint-config": "^23.0.0",
+    "eslint": "^8.57.0",
+    "prettier": "^3.3.2",
+    "style-loader": "^4.0.0",
+    "webpack": "^5.92.1",
+    "webpack-cli": "^5.1.4"
+  },
+  "dependencies": {
+    "@kintone/rest-api-client": "^5.5.2",
+    "kintone-ui-component": "^1.17.1"
+  }
+}
