@@ -32,6 +32,7 @@ import { addData, fetchData, deleteData } from "./indexedDB.js";
       const newRows = parts.map((part) => {
         const row = structuredClone(tempRow);
         row.value[partNumberFieldCode].value = part.Part_Number;
+        row.value[partNumberFieldCode].lookup = true;
         row.value[partNameFieldCode].value = part.Part_Name;
         return row;
       });
