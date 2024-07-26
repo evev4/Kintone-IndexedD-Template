@@ -1,124 +1,106 @@
-import { addData, fetchData, deleteData } from "./indexedDB.js";
 import { Button } from "kintone-ui-component/lib/Button";
 import { KintoneRestAPIClient } from "@kintone/rest-api-client";
+import { addData, fetchData, deleteData } from "./indexedDB.js";
 
 (() => {
   "use strict";
+  // Define database info
   const database = { name: "kintoneDB", version: 1 };
   const DATA_ID = 1;
 
+  // Define kintone app field code
   const productNameFieldCode = "Product_Name";
   const partsTableFieldCode = "Parts";
   const partNumberFieldCode = "Part_Number";
   const partNameFieldCode = "Part_Name";
 
-  function updatePartsListTable(record) {
+  // Function to update the parts list table based on the selected product name
+  async function updatePartsListTable(ev) {
+    const record = ev.record;
     const productName = record[productNameFieldCode].value;
 
-    return fetchData(database, DATA_ID, productName)
-      .then((parts) => {
-        if (!parts) {
-          // Return an empty array if no parts are found
-          console.log("No parts found.");
-          return;
-        }
-        console.log(parts);
+    try {
+      const parts = await fetchData(database, DATA_ID, productName);
 
-        // Get the template row from the table and map the data
-        const tempRow = record[partsTableFieldCode].value[0];
-        const newRows = parts.map((part) => {
-          const row = structuredClone(tempRow);
-          row.value[partNumberFieldCode].value = part.Part_Number;
-          row.value[partNameFieldCode].value = part.Part_Name;
-          return row;
-        });
+      if (!parts || parts.length === 0) {
+        console.log("No parts found.");
+        return;
+      }
 
-        record[partsTableFieldCode].value = newRows;
-        kintone.app.record.set({ record: record });
-      })
-      .catch((error) => {
-        console.error("Error fetching data:", error);
+      // Get the template row from the table and map the data
+      const tempRow = record[partsTableFieldCode].value[0];
+      const newRows = parts.map((part) => {
+        const row = structuredClone(tempRow);
+        row.value[partNumberFieldCode].value = part.Part_Number;
+        row.value[partNameFieldCode].value = part.Part_Name;
+        return row;
       });
+
+      record[partsTableFieldCode].value = newRows;
+      kintone.app.record.set({ record });
+    } catch (error) {
+      console.error("Error fetching data:", error);
+    }
   }
 
-  function addPartListData() {
+  // Function to add part list data to the IndexedDB
+  async function addPartListData() {
     const partListAppId = kintone.app.getLookupTargetAppId("Part_Number");
     const client = new KintoneRestAPIClient({});
-    client.record
-      .getAllRecords({ app: partListAppId })
-      .then((records) => {
-        const data = {
-          id: DATA_ID,
-          appId: partListAppId,
-          records: records
-        };
-        // Add data to the database
-        addData(data, database)
-          .then((message) => {
-            console.log(message);
-          })
-          .catch((error) => {
-            console.error(error);
-          });
-      })
-      .catch((err) => {
-        console.log(err);
-      });
+
+    try {
+      const records = await client.record.getAllRecords({ app: partListAppId });
+      const data = { id: DATA_ID, appId: partListAppId, records };
+
+      const message = await addData(data, database);
+      console.log(message);
+    } catch (error) {
+      console.error("Failed to add part list data:", error);
+    }
   }
 
-  function deletePartListData() {
-    deleteData(database)
-      .then((message) => {
-        console.log(message);
-      })
-      .catch((error) => {
-        console.error(error);
-      });
+  // Function to delete part list data from the IndexedDB
+  async function deletePartListData() {
+    try {
+      const message = await deleteData(database);
+      console.log(message);
+    } catch (error) {
+      console.error("Failed to delete part list data:", error);
+    }
   }
 
-  function getButton(buttonId, buttonName) {
+  // Helper function to create a button if it doesn't exist and add an event listener to it
+  function createButton(buttonId, buttonName, onClick) {
     let button = document.getElementById(buttonId);
-    if (button != null) {
-      return button;
+    if (!button) {
+      button = new Button({
+        text: buttonName,
+        type: "submit",
+        className: "options-class",
+        id: buttonId,
+        visible: true,
+        disabled: false
+      });
+      kintone.app.getHeaderMenuSpaceElement().appendChild(button);
+      button.addEventListener("click", onClick);
     }
-
-    const header = kintone.app.getHeaderMenuSpaceElement();
-
-    button = new Button({
-      text: buttonName,
-      type: "submit",
-      className: "options-class",
-      id: buttonId,
-      visible: true,
-      disabled: false
-    });
-    header.appendChild(button);
-    return button;
   }
 
-  kintone.events.on("app.record.index.show", (event) => {
-    const addButton = getButton("add-button", "Add Parts DB");
-    if (addButton != null) {
-      addButton.addEventListener("click", () => {
-        addPartListData();
-      });
-    }
-    const delButton = getButton("delete-button", "Delete Parts DB");
-    if (delButton != null) {
-      delButton.addEventListener("click", () => {
-        deletePartListData();
-      });
-    }
-    return event;
+  // Event listener for the index show event to add the Add and Delete buttons
+  kintone.events.on("app.record.index.show", () => {
+    createButton("add-button", "Add Parts DB", addPartListData);
+    createButton("delete-button", "Delete Parts DB", deletePartListData);
   });
 
+  // Event listener for changes to the Product_Name field to update the parts list table
   kintone.events.on(
     [
       "app.record.edit.change.Product_Name",
       "app.record.create.change.Product_Name"
     ],
     (event) => {
-      updatePartsListTable(event.record);
+      updatePartsListTable(event);
+      return event;
     }
   );
 })();
