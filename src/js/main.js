@@ -24,6 +24,8 @@ import { addData, fetchData, deleteData } from "./indexedDB.js";
 
       if (!parts || parts.length === 0) {
         console.log("No parts found.");
+        record[partsTableFieldCode].value = [];
+        kintone.app.record.set({ record });
         return;
       }
 
